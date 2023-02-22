@@ -7,6 +7,8 @@ use Illuminate\Database\Eloquent\Model;
 
 class DiscountCode extends Model
 {
+    protected $fillable = ['code', 'campaign_id', 'discount_rate', 'expire_date'];
+
     use HasFactory;
 
     public function campaign() {
