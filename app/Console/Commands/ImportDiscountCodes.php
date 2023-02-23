@@ -3,10 +3,9 @@
 namespace App\Console\Commands;
 
 use Illuminate\Console\Command;
-// use App\Services\DiscountCodeService;
 use App\Jobs\ImportDiscountCodesJob;
-use App\Services\DiscountCodeService;
 use Illuminate\Support\Facades\Storage;
+use App\Models\Campaign;
 class ImportDiscountCodes extends Command
 {
     /**
@@ -31,11 +30,9 @@ class ImportDiscountCodes extends Command
     {
 
         $fileName = $this->argument('filename');
-
         $file = Storage::get('public/'.$fileName);
-        $codes = explode(PHP_EOL, $file);
 
-        $fileSize = Storage::size('public/'.$fileName);
+        $codes = explode(PHP_EOL, $file);
        
         $totalLines = substr_count($file, PHP_EOL);
  
@@ -43,16 +40,18 @@ class ImportDiscountCodes extends Command
         $totalChunks = ceil($totalLines / $chunkSize);
 
         $bar = $this->output->createProgressBar($totalChunks);
-
         for ($i = 0; $i < $totalLines; $i += $chunkSize) {
+            $campaign =  Campaign::inRandomOrder()->first(); // random campaign
+            $campaign_id =  $campaign ? $campaign->id :1;
+         
             $chunk = array_slice($codes, $i, $chunkSize);
             foreach ($chunk as $code) {
                 $data = [
                     'code' => trim($code),
-                    'campaign_id' => 1 // It is a sybolic campaign_id
+                    'campaign_id' =>$campaign_id
                 ];
                 try {
-                    ImportDiscountCodesJob::dispatch($data);
+                    ImportDiscountCodesJob::dispatch($data)->delay(now()->addSeconds(30));
                 } catch(\Exception $e) {
                    \Log::error($e->getMessage());
                 }
@@ -62,18 +61,5 @@ class ImportDiscountCodes extends Command
         $bar->finish();
 
         $this->info('Discount codes import job created successfully.');
-
-        // foreach ($codes as $code) {
-        //     $data = [
-        //         'code' => trim($code),
-        //         'campaign_id' => 1 // It is a sybolic campaign_id
-        //     ];
-        //     try {
-        //         ImportDiscountCodesJob::dispatch($data)->delay(3);
-        //     } catch(\Exception $e) {
-        //         dd($e);
-        //     }
-        // }
-        // $this->info('Discount codes import job created successfully.');
     }
 }
